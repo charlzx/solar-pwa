@@ -106,6 +106,19 @@ const Modal = ({ isOpen, onClose, onConfirm, title, children }) => {
 // --- Calculator View Component ---
 const CalculatorPage = ({ project, updateProject, goBack }) => {
     const [projectData, setProjectData] = useState(project);
+    const [showFixedBack, setShowFixedBack] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 200) {
+                setShowFixedBack(true);
+            } else {
+                setShowFixedBack(false);
+            }
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // This effect ensures that any change in the calculator is bubbled up and saved.
     useEffect(() => {
@@ -131,7 +144,7 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
     };
 
     const addAppliance = () => {
-        const newAppliance = { id: Date.now(), name: 'New Appliance', quantity: 1, wattage: 100, hours: 1 };
+        const newAppliance = { id: Date.now(), name: '', quantity: 1, wattage: 0, hours: 0 };
         setProjectData(prevData => ({ ...prevData, appliances: [...prevData.appliances, newAppliance] }));
     };
 
@@ -160,23 +173,23 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
     const calculations = useMemo(() => {
         const { dailyEnergyKwh, peakSunHours, systemEfficiency, panelWattage, customPanelWattage, daysOfAutonomy, batteryDoD, batteryVoltage, peakLoad, availableBatteryAh, availableBatteryVoltage } = projectData;
         
-        const effectivePanelWattage = panelWattage === 'custom' ? (customPanelWattage || 1) : panelWattage;
+        const effectivePanelWattage = panelWattage === 'custom' ? (Number(customPanelWattage) || 1) : Number(panelWattage);
 
-        const dailyEnergyWh = dailyEnergyKwh * 1000;
-        const requiredPanelWattage = (dailyEnergyWh / (peakSunHours * systemEfficiency)) || 0;
+        const dailyEnergyWh = Number(dailyEnergyKwh) * 1000;
+        const requiredPanelWattage = (dailyEnergyWh / (Number(peakSunHours) * Number(systemEfficiency))) || 0;
         const numberOfPanels = Math.ceil(requiredPanelWattage / effectivePanelWattage) || 0;
         const actualSystemSizeKw = (numberOfPanels * effectivePanelWattage) / 1000;
-        const totalStorageWh = dailyEnergyWh * daysOfAutonomy;
-        const requiredBatteryCapacityWh = totalStorageWh / batteryDoD;
-        const requiredBatteryCapacityAh = Math.ceil(requiredBatteryCapacityWh / batteryVoltage) || 0;
-        const inverterSize = Math.ceil(peakLoad * 1.25) || 0;
-        const totalSolarPanelCurrent = (numberOfPanels * effectivePanelWattage) / batteryVoltage;
+        const totalStorageWh = dailyEnergyWh * Number(daysOfAutonomy);
+        const requiredBatteryCapacityWh = totalStorageWh / Number(batteryDoD);
+        const requiredBatteryCapacityAh = Math.ceil(requiredBatteryCapacityWh / Number(batteryVoltage)) || 0;
+        const inverterSize = Math.ceil(Number(peakLoad) * 1.25) || 0;
+        const totalSolarPanelCurrent = (numberOfPanels * effectivePanelWattage) / Number(batteryVoltage);
         const chargeControllerAmps = Math.ceil(totalSolarPanelCurrent * 1.25) || 0;
         
         let totalNumberOfBatteries = 0;
-        if (batteryVoltage > 0 && availableBatteryVoltage > 0 && availableBatteryAh > 0 && batteryVoltage % availableBatteryVoltage === 0) {
-            const batteriesInSeries = batteryVoltage / availableBatteryVoltage;
-            const numberOfParallelStrings = Math.ceil(requiredBatteryCapacityAh / availableBatteryAh);
+        if (Number(batteryVoltage) > 0 && Number(availableBatteryVoltage) > 0 && Number(availableBatteryAh) > 0 && Number(batteryVoltage) % Number(availableBatteryVoltage) === 0) {
+            const batteriesInSeries = Number(batteryVoltage) / Number(availableBatteryVoltage);
+            const numberOfParallelStrings = Math.ceil(requiredBatteryCapacityAh / Number(availableBatteryAh));
             totalNumberOfBatteries = batteriesInSeries * numberOfParallelStrings;
         }
 
@@ -198,7 +211,10 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
     }, [calculations.inverterSize]);
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="w-full">
+            <button onClick={goBack} className={`fixed top-4 left-4 z-20 flex items-center justify-center bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${showFixedBack ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'}`}>
+                <ArrowLeft size={20} />
+            </button>
             <style>{`
                 @media print {
                     body * { visibility: hidden; }
@@ -348,8 +364,7 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                         </div>
                     </div>
                 </div>
-                 <footer className="text-center mt-12 text-gray-500 text-sm print-hidden">
-                 </footer>
+                 <footer className="text-center mt-12 text-gray-500 text-sm print-hidden"></footer>
                  <button onClick={() => window.print()} className="fixed bottom-5 right-5 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110 z-20 print-hidden">
                     <Printer size={24} />
                  </button>
@@ -377,10 +392,13 @@ export default function App() {
                 setProjects(JSON.parse(savedProjects));
             }
 
-            const savedTheme = localStorage.getItem('solarTheme');
-            if (savedTheme === 'dark') {
-                setDarkMode(true);
-                document.documentElement.classList.add('dark');
+            // Check for saved theme preference, or default to system preference
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark')
+              setDarkMode(true)
+            } else {
+              document.documentElement.classList.remove('dark')
+              setDarkMode(false)
             }
         } catch (error) {
             console.error("Could not load from local storage", error);
@@ -391,11 +409,11 @@ export default function App() {
         setDarkMode(prevMode => {
             const newMode = !prevMode;
             if (newMode) {
+                localStorage.theme = 'dark';
                 document.documentElement.classList.add('dark');
-                localStorage.setItem('solarTheme', 'dark');
             } else {
+                localStorage.theme = 'light';
                 document.documentElement.classList.remove('dark');
-                localStorage.setItem('solarTheme', 'light');
             }
             return newMode;
         });
@@ -415,7 +433,7 @@ export default function App() {
             projectName: 'New Solar Project',
             clientName: '',
             dailyEnergyKwh: 10,
-            appliances: [{ id: 1, name: 'Refrigerator', quantity: 1, wattage: 150, hours: 8 }],
+            appliances: [],
             calcMethod: 'audit',
             peakSunHours: 5,
             systemEfficiency: 0.80,
@@ -479,74 +497,75 @@ export default function App() {
 
     return (
         <div className="bg-gray-100 dark:bg-gray-900 min-h-screen" style={{backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(darkMode ? darkSvgBodyBackground : svgBodyBackground)}")`}}>
-            
-            {activeProject ? (
-                <CalculatorPage project={activeProject} updateProject={updateProject} goBack={() => setActiveProjectId(null)} />
-            ) : (
-                <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-                     <header className="text-center mb-10 flex justify-between items-start">
-                        <div className="w-10 h-10"></div>
-                        <div>
-                            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 dark:text-gray-100">Solar Projects</h1>
-                            <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">Manage all your solar calculation projects in one place.</p>
-                        </div>
-                        <button onClick={toggleDarkMode} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-                            {darkMode ? <SunDim size={20} /> : <Moon size={20} />}
-                        </button>
-                    </header>
-                    <div className="max-w-4xl mx-auto">
-                        <button onClick={createNewProject} className="w-full mb-8 flex items-center justify-center space-x-2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-lg">
-                            <Plus size={20} />
-                            <span>Create New Project</span>
-                        </button>
-                        <div className="bg-white dark:bg-gray-800/50 rounded-2xl shadow-lg p-6 backdrop-blur-sm">
-                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Existing Projects</h2>
-                            <div className="space-y-4">
-                                {projects.length > 0 ? projects.map(project => (
-                                    <div key={project.id} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300">
-                                        <div className="flex items-center justify-between p-4">
-                                            <div className="flex-grow cursor-pointer" onClick={() => setActiveProjectId(project.id)}>
-                                                 {editingProjectId === project.id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editingProjectName}
-                                                        onChange={(e) => setEditingProjectName(e.target.value)}
-                                                        className="font-semibold text-lg text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 border border-blue-400 rounded px-2 py-1"
-                                                        autoFocus
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onBlur={() => saveProjectName(project.id)}
-                                                        onKeyDown={(e) => { if (e.key === 'Enter') saveProjectName(project.id) }}
-                                                    />
-                                                ) : (
-                                                    <span className="font-semibold text-lg text-gray-800 dark:text-gray-200">{project.projectName}</span>
-                                                )}
-                                            </div>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                {activeProject ? (
+                    <CalculatorPage project={activeProject} updateProject={updateProject} goBack={() => setActiveProjectId(null)} />
+                ) : (
+                    <div>
+                         <header className="text-center mb-10 pt-8 sm:pt-12 flex justify-between items-start">
+                            <div className="w-10 h-10"></div>
+                            <div>
+                                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 dark:text-gray-100">Solar Projects</h1>
+                                <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">Manage all your solar calculation projects in one place.</p>
+                            </div>
+                            <button onClick={toggleDarkMode} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                                {darkMode ? <SunDim size={20} /> : <Moon size={20} />}
+                            </button>
+                        </header>
+                        <div className="max-w-4xl mx-auto">
+                            <button onClick={createNewProject} className="w-full mb-8 flex items-center justify-center space-x-2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-lg">
+                                <Plus size={20} />
+                                <span>Create New Project</span>
+                            </button>
+                            <div className="bg-white dark:bg-gray-800/50 rounded-2xl shadow-lg p-6 backdrop-blur-sm">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Existing Projects</h2>
+                                <div className="space-y-4">
+                                    {projects.length > 0 ? projects.map(project => (
+                                        <div key={project.id} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 p-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex-grow cursor-pointer mb-2 sm:mb-0" onClick={() => setActiveProjectId(project.id)}>
+                                                     {editingProjectId === project.id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editingProjectName}
+                                                            onChange={(e) => setEditingProjectName(e.target.value)}
+                                                            className="font-semibold text-lg text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 border border-blue-400 rounded px-2 py-1 w-full sm:w-auto"
+                                                            autoFocus
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onBlur={() => saveProjectName(project.id)}
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') saveProjectName(project.id) }}
+                                                        />
+                                                    ) : (
+                                                        <span className="font-semibold text-lg text-gray-800 dark:text-gray-200">{project.projectName}</span>
+                                                    )}
+                                                </div>
 
-                                            <div className="flex items-center space-x-2 flex-shrink-0">
-                                                {editingProjectId === project.id ? (
-                                                    <button onClick={() => saveProjectName(project.id)} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><Save size={18} /></button>
-                                                ) : (
-                                                    <button onClick={() => startEditing(project)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"><Edit size={18} /></button>
-                                                )}
-                                                <button onClick={() => handleDeleteRequest(project.id)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><Trash2 size={18} /></button>
-                                                <button onClick={() => setActiveProjectId(project.id)} className="bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-600">Open</button>
+                                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                                    {editingProjectId === project.id ? (
+                                                        <button onClick={() => saveProjectName(project.id)} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><Save size={18} /></button>
+                                                    ) : (
+                                                        <button onClick={() => startEditing(project)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"><Edit size={18} /></button>
+                                                    )}
+                                                    <button onClick={() => handleDeleteRequest(project.id)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><Trash2 size={18} /></button>
+                                                    <button onClick={() => setActiveProjectId(project.id)} className="bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-600">Open</button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )) : <p className="text-gray-500 dark:text-gray-400 text-center py-4">No projects yet. Click the button above to create one!</p>}
+                                    )) : <p className="text-gray-500 dark:text-gray-400 text-center py-4">No projects yet. Click the button above to create one!</p>}
+                                </div>
                             </div>
                         </div>
+                         <Modal 
+                            isOpen={isModalOpen} 
+                            onClose={() => setIsModalOpen(false)} 
+                            onConfirm={handleConfirmDelete}
+                            title="Delete Project"
+                        >
+                            Are you sure you want to permanently delete this project? This action cannot be undone.
+                        </Modal>
                     </div>
-                     <Modal 
-                        isOpen={isModalOpen} 
-                        onClose={() => setIsModalOpen(false)} 
-                        onConfirm={handleConfirmDelete}
-                        title="Delete Project"
-                    >
-                        Are you sure you want to permanently delete this project? This action cannot be undone.
-                    </Modal>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
