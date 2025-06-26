@@ -364,7 +364,9 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                         </div>
                     </div>
                 </div>
-                 <footer className="text-center mt-12 text-gray-500 text-sm print-hidden"></footer>
+                 <footer className="text-center mt-12 text-gray-500 text-sm print-hidden">
+                    <p>This calculator provides an estimate for planning purposes. Consult a qualified professional for detailed system design and installation.</p>
+                </footer>
                  <button onClick={() => window.print()} className="fixed bottom-5 right-5 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110 z-20 print-hidden">
                     <Printer size={24} />
                  </button>
@@ -523,13 +525,13 @@ export default function App() {
                                     {projects.length > 0 ? projects.map(project => (
                                         <div key={project.id} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 p-4">
                                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                                                <div className="flex-grow cursor-pointer mb-2 sm:mb-0" onClick={() => setActiveProjectId(project.id)}>
+                                                <div className="flex-grow cursor-pointer w-full mb-3 sm:mb-0" onClick={() => setActiveProjectId(project.id)}>
                                                      {editingProjectId === project.id ? (
                                                         <input
                                                             type="text"
                                                             value={editingProjectName}
                                                             onChange={(e) => setEditingProjectName(e.target.value)}
-                                                            className="font-semibold text-lg text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 border border-blue-400 rounded px-2 py-1 w-full sm:w-auto"
+                                                            className="font-semibold text-lg text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 border border-blue-400 rounded px-2 py-1 w-full"
                                                             autoFocus
                                                             onClick={(e) => e.stopPropagation()}
                                                             onBlur={() => saveProjectName(project.id)}
@@ -540,7 +542,7 @@ export default function App() {
                                                     )}
                                                 </div>
 
-                                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                                <div className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto justify-end">
                                                     {editingProjectId === project.id ? (
                                                         <button onClick={() => saveProjectName(project.id)} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><Save size={18} /></button>
                                                     ) : (
