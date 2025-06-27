@@ -690,6 +690,7 @@ export default function App() {
                                 <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 dark:text-gray-100">Solar Projects</h1>
                                 <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">Manage all your solar calculation projects in one place.</p>
                             </div>
+                            <div></div>
                             {/* dark mode toggle */}
                             {/* <button onClick={toggleDarkMode} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
                                 {darkMode ? <SunDim size={20} /> : <Moon size={20} />}
