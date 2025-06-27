@@ -1,17 +1,59 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Power, Sun, BatteryCharging, PowerOff, List, Trash2, Plus, Info, Printer, Briefcase, ArrowLeft, Edit, Save, Moon, SunDim, AlertTriangle, CheckCircle, ArrowRight, Home } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Home, Power, Sun, BatteryCharging, PowerOff, List, Trash2, Plus, Info, Printer, Briefcase, ArrowLeft, Edit, Save, Moon, SunDim, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 
-// --- Helper Components (Unchanged) ---
+// --- Constants (defined outside components for performance) ---
 
-const Tooltip = ({ text, children }) => (
+const PSH_OPTIONS = [
+    { value: 3, label: '3 Hours (Heavy Clouds/Shade)' },
+    { value: 4, label: '4 Hours (Cloudy Regions)' },
+    { value: 5, label: '5 Hours (Standard Average)' },
+    { value: 5.5, label: '5.5 Hours (e.g., Abuja, Nigeria)' },
+    { value: 6, label: '6 Hours (Sunnier Regions)' },
+    { value: 7, label: '7 Hours (Desert Climates)' }
+];
+
+const PANEL_WATTAGE_OPTIONS = [
+    { value: 300, label: '300W' },
+    { value: 400, label: '400W' },
+    { value: 450, label: '450W' },
+    { value: 550, label: '550W' },
+    { value: 'custom', label: 'Custom...' }
+];
+
+const BATTERY_DOD_OPTIONS = [
+    { value: 0.9, label: 'Lithium-ion (90% DoD)' },
+    { value: 0.8, label: 'Tubular / LiFePO4 (80% DoD)' },
+    { value: 0.5, label: 'Lead-Acid (50% DoD)' }
+];
+
+const SYSTEM_VOLTAGE_OPTIONS = [
+    { value: 12, label: '12V' }, { value: 24, label: '24V' }, { value: 48, label: '48V' }
+];
+
+const AVAILABLE_BATTERY_VOLTAGE_OPTIONS = [
+    { value: 2, label: '2V' }, { value: 6, label: '6V' }, { value: 12, label: '12V' }
+];
+
+const INVERTER_SIZES = [1000, 1500, 2000, 2500, 3000, 4000, 5000, 8000, 10000, 12000];
+const INVERTER_SAFETY_FACTOR = 1.25;
+const CHARGE_CONTROLLER_SAFETY_FACTOR = 1.25;
+
+
+// --- Helper Components ---
+
+const Tooltip = ({ text, children, disabled = false }) => (
     <div className="relative flex items-center group">
         {children}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-            {text}
-            <div className="tooltip-arrow" data-popper-arrow></div>
-        </div>
+        {/* Show tooltip text only if it exists and the target is not disabled */}
+        {text && !disabled && (
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                {text}
+                <div className="tooltip-arrow" data-popper-arrow></div>
+            </div>
+        )}
     </div>
 );
+
 
 const SectionHeader = ({ icon, title, subtitle, step }) => (
     <div className="flex items-start space-x-4 mb-6">
@@ -27,25 +69,27 @@ const SectionHeader = ({ icon, title, subtitle, step }) => (
     </div>
 );
 
-const InputField = React.memo(({ label, type, value, onChange, unit, min = 0, tooltip, placeholder }) => (
+// UPDATE: Conditionally render the label element
+const InputField = React.memo(React.forwardRef(({ label, type, value, onChange, unit, min = 0, tooltip, placeholder, autoFocus = false }, ref) => (
     <div className="w-full">
-        <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {label && <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {label}
             {tooltip && <Tooltip text={tooltip}><Info size={14} className="ml-1.5 text-gray-400 cursor-help" /></Tooltip>}
-        </label>
+        </label>}
         <div className="relative">
-            <input type={type} value={value} onChange={onChange} min={min} placeholder={placeholder} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900 dark:text-gray-100" />
+            <input ref={ref} type={type} value={value} onChange={onChange} min={min} placeholder={placeholder} autoFocus={autoFocus} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900 dark:text-gray-100" />
             {unit && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{unit}</span>}
         </div>
     </div>
-));
+)));
 
+// UPDATE: Conditionally render the label element
 const SelectField = React.memo(({ label, value, onChange, options, tooltip }) => (
     <div className="w-full">
-        <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {label && <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {label}
             {tooltip && <Tooltip text={tooltip}><Info size={14} className="ml-1.5 text-gray-400 cursor-help" /></Tooltip>}
-        </label>
+        </label>}
         <select value={value} onChange={onChange} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition appearance-none text-gray-900 dark:text-gray-100">
             {options.map(opt => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
         </select>
@@ -110,21 +154,15 @@ const StepCard = ({ children, isActive }) => (
 );
 
 // --- Calculator View Component ---
-const CalculatorPage = ({ project, updateProject, goBack }) => {
+const CalculatorPage = ({ project, updateProject, goBack, isNew }) => {
     const [projectData, setProjectData] = useState(project);
     const [currentStep, setCurrentStep] = useState(1);
+    const [lastAddedApplianceId, setLastAddedApplianceId] = useState(null);
+    const applianceNameInputRef = useRef(null);
 
-    // This effect syncs local state with the parent prop ONLY when switching projects.
-    // It prevents the local form state from being overwritten during debounced saves.
-    useEffect(() => {
-        setProjectData(project);
-    }, [project.id]);
-
-    // Removed `project` prop from dependency array to prevent infinite re-render loops.
-    // This effect now only runs when the user-edited data (`projectData`) changes.
+    // Debounced effect to save data.
     useEffect(() => {
         const handler = setTimeout(() => {
-            // Only update if the project object has actually changed
             if (JSON.stringify(projectData) !== JSON.stringify(project)) {
                 updateProject(projectData);
             }
@@ -132,8 +170,15 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
         return () => clearTimeout(handler);
     }, [projectData, updateProject, project]);
     
+    useEffect(() => {
+        if (lastAddedApplianceId && applianceNameInputRef.current) {
+            applianceNameInputRef.current.focus();
+            setLastAddedApplianceId(null);
+        }
+    }, [lastAddedApplianceId]);
+
     const handleInputChange = (field, value) => {
-        const fieldType = typeof projectData[field]; // Use local state for type checking
+        const fieldType = typeof project[field];
         let parsedValue = value;
         if (fieldType === 'number') {
             parsedValue = parseFloat(value) || 0;
@@ -151,6 +196,7 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
     const addAppliance = () => {
         const newAppliance = { id: Date.now(), name: '', quantity: 1, wattage: 0, hours: 0 };
         setProjectData(prevData => ({ ...prevData, appliances: [...(prevData.appliances || []), newAppliance] }));
+        setLastAddedApplianceId(newAppliance.id);
     };
 
     const removeAppliance = (id) => {
@@ -172,7 +218,6 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
         }
     }, [totalWattHoursFromAudit, projectData.calcMethod, projectData.dailyEnergyKwh]);
 
-    // Hardened calculations to prevent NaN/Infinity errors.
     const calculations = useMemo(() => {
         const { dailyEnergyKwh, peakSunHours, systemEfficiency, panelWattage, customPanelWattage, daysOfAutonomy, batteryDoD, batteryVoltage, peakLoad, availableBatteryAh, availableBatteryVoltage } = projectData;
         
@@ -196,10 +241,10 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
         const requiredBatteryCapacityWh = safeBatteryDoD > 0 ? totalStorageWh / safeBatteryDoD : 0;
         const requiredBatteryCapacityAh = safeBatteryVoltage > 0 ? Math.ceil(requiredBatteryCapacityWh / safeBatteryVoltage) : 0;
         
-        const inverterSize = Math.ceil(Number(peakLoad) * 1.25) || 0;
+        const inverterSize = Math.ceil(Number(peakLoad) * INVERTER_SAFETY_FACTOR) || 0;
         
         const totalSolarPanelCurrent = safeBatteryVoltage > 0 ? (numberOfPanels * effectivePanelWattage) / safeBatteryVoltage : 0;
-        const chargeControllerAmps = Math.ceil(totalSolarPanelCurrent * 1.25) || 0;
+        const chargeControllerAmps = Math.ceil(totalSolarPanelCurrent * CHARGE_CONTROLLER_SAFETY_FACTOR) || 0;
         
         let totalNumberOfBatteries = 0;
         const isVoltageCompatible = safeBatteryVoltage > 0 && safeAvailableBatteryVoltage > 0 && safeBatteryVoltage % safeAvailableBatteryVoltage === 0;
@@ -213,8 +258,8 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
         return {
             actualSystemSizeKw: actualSystemSizeKw.toFixed(2),
             numberOfPanels: isFinite(numberOfPanels) ? numberOfPanels : 0,
-            requiredBatteryCapacityWh: isFinite(requiredBatteryCapacityWh) ? requiredBatteryCapacityWh : 0,
-            requiredBatteryCapacityAh: isFinite(requiredBatteryCapacityAh) ? requiredBatteryCapacityAh : 0,
+            requiredBatteryCapacityWh: isFinite(requiredBatteryCapacityWh) ? requiredBatteryCapacityWh.toLocaleString() : 0,
+            requiredBatteryCapacityAh: isFinite(requiredBatteryCapacityAh) ? requiredBatteryCapacityAh.toLocaleString() : 0,
             inverterSize: isFinite(inverterSize) ? inverterSize : 0,
             chargeControllerAmps: isFinite(chargeControllerAmps) ? chargeControllerAmps : 0,
             totalNumberOfBatteries,
@@ -223,7 +268,6 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
     }, [projectData]);
 
     const suggestedInverters = useMemo(() => {
-        const INVERTER_SIZES = [1000, 1500, 2000, 2500, 3000, 4000, 5000, 8000, 10000, 12000];
         return INVERTER_SIZES.filter(size => size >= calculations.inverterSize).slice(0, 3);
     }, [calculations.inverterSize]);
 
@@ -233,18 +277,33 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
       switch(currentStep) {
         case 1: return projectData.projectName?.trim() !== '';
         case 2: return projectData.calcMethod === 'bill' ? projectData.dailyEnergyKwh > 0 : totalWattHoursFromAudit > 0;
-        case 3: return projectData.peakSunHours > 0 && projectData.systemEfficiency > 0 && (projectData.panelWattage !== 'custom' || projectData.customPanelWattage > 0);
+        case 3: return projectData.peakSunHours > 0 && projectData.systemEfficiency > 0;
         case 4: return projectData.daysOfAutonomy > 0 && projectData.availableBatteryAh > 0;
         case 5: return projectData.peakLoad > 0;
         default: return true;
       }
     }, [currentStep, projectData, totalWattHoursFromAudit]);
 
+    const validationMessage = useMemo(() => {
+        if (isStepValid) return null;
+        switch(currentStep) {
+            case 1: return 'Please enter a project name.';
+            case 2: return 'Please add an appliance or enter energy use from a bill.';
+            case 3: return 'Peak Sun Hours and System Efficiency must be greater than zero.';
+            case 4: return 'Days of Autonomy and Battery Capacity must be greater than zero.';
+            case 5: return 'Peak Load must be greater than zero.';
+            default: return 'Please complete all fields to continue.';
+        }
+    }, [isStepValid, currentStep]);
+
     const handleNext = () => {
-        if (isStepValid && currentStep < TOTAL_STEPS) {
-            setCurrentStep(step => step + 1);
+        if ((isNew && isStepValid) || !isNew) {
+            if (currentStep < TOTAL_STEPS) {
+                setCurrentStep(step => step + 1);
+            }
         }
     };
+
     const handleBack = () => {
         if (currentStep > 1) {
             setCurrentStep(step => step - 1);
@@ -274,37 +333,57 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                 }
             `}</style>
             
-            {/* -- Responsive Progress Bar -- */}
+            {/* UPDATE: New responsive progress bar */}
             <div className="mb-8 print-hidden">
-                <div className="md:hidden text-center mb-4">
-                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Step {currentStep} of {TOTAL_STEPS}</p>
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{steps[currentStep - 1].title}</h3>
-                </div>
-                <div className="hidden md:flex items-center justify-between">
-                    {steps.map((step, index) => (
-                        <React.Fragment key={step.number}>
-                            <button 
-                                onClick={() => setCurrentStep(step.number)}
-                                className="flex flex-col items-center text-center cursor-pointer p-1"
-                            >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 border-2 ${currentStep >= step.number ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
-                                    <span className="font-bold">{step.number}</span>
-                                </div>
-                                <p className={`mt-2 text-xs font-semibold ${currentStep >= step.number ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                                    {step.title}
-                                </p>
-                            </button>
-                            {index < steps.length - 1 && (
-                                <div className={`flex-1 h-1 rounded-full mx-2 transition-colors duration-500 ${currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-                            )}
-                        </React.Fragment>
+                {/* Desktop Progress Bar */}
+                <div className="hidden md:flex justify-between mb-2">
+                    {steps.map(step => (
+                        <div 
+                            key={step.number} 
+                            className={`text-xs text-center flex-1 ${currentStep >= step.number ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-400 dark:text-gray-500'} cursor-pointer hover:text-blue-700 dark:hover:text-blue-300 transition-colors`}
+                            onClick={() => setCurrentStep(step.number)}
+                        >
+                            {step.title}
+                        </div>
                     ))}
+                </div>
+                <div className="relative hidden md:block bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${((currentStep - 1) / (TOTAL_STEPS - 1)) * 100}%` }}></div>
+                </div>
+
+                {/* Mobile Progress Bar with clickable numbers */}
+                <div className="md:hidden">
+                    <div className="flex justify-between items-center relative">
+                         {/* Connecting line */}
+                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700 -translate-y-1/2 -z-10">
+                             <div className="bg-blue-600 h-full transition-all duration-300" style={{width: `${((currentStep - 1) / (TOTAL_STEPS - 1)) * 100}%`}}></div>
+                        </div>
+                        {steps.map(step => (
+                            <div
+                                key={step.number}
+                                onClick={() => setCurrentStep(step.number)}
+                                className="flex flex-col items-center flex-1 cursor-pointer z-10"
+                            >
+                                <div
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 transition-all duration-300 ${
+                                        currentStep >= step.number
+                                            ? 'bg-blue-600 border-blue-600 text-white'
+                                            : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                    }`}
+                                >
+                                    {step.number}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-center mt-2">
+                        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{steps[currentStep-1].title}</span>
+                    </div>
                 </div>
             </div>
 
             <div className="relative">
-                {/* Step 1: Project Details */}
-                <StepCard isActive={currentStep === 1}>
+                 <StepCard isActive={currentStep === 1}>
                     <div className="bg-white dark:bg-gray-800/50 p-8 rounded-2xl shadow-lg">
                         <SectionHeader icon={<Briefcase size={28} />} title="Project Details" subtitle="Start by defining the project scope." step={1} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -313,8 +392,6 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                         </div>
                     </div>
                 </StepCard>
-
-                {/* Step 2: Energy Consumption */}
                 <StepCard isActive={currentStep === 2}>
                     <div className="bg-white dark:bg-gray-800/50 p-8 rounded-2xl shadow-lg">
                         <SectionHeader icon={<Power size={28} />} title="Daily Energy Consumption" subtitle="Determine the total daily power your system needs to provide." step={2} />
@@ -325,7 +402,7 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                         {projectData.calcMethod === 'audit' ? (<div>
                              <div className="space-y-4">{projectData.appliances && projectData.appliances.map(app => (
                                  <div key={app.id} className="flex flex-col sm:flex-row sm:items-end gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
-                                     <div className="flex-grow min-w-[150px]"><InputField label="Appliance" type="text" value={app.name} onChange={e => handleApplianceChange(app.id, 'name', e.target.value)} placeholder="e.g. Fridge" /></div>
+                                     <div className="flex-grow min-w-[150px]"><InputField ref={app.id === lastAddedApplianceId ? applianceNameInputRef : null} label="Appliance" type="text" value={app.name} onChange={e => handleApplianceChange(app.id, 'name', e.target.value)} placeholder="e.g. Fridge" /></div>
                                      <div className="w-full sm:w-20"><InputField label="Qty" type="number" value={app.quantity} onChange={e => handleApplianceChange(app.id, 'quantity', Number(e.target.value))} /></div>
                                      <div className="w-full sm:w-24"><InputField label="Wattage (W)" type="number" value={app.wattage} onChange={e => handleApplianceChange(app.id, 'wattage', Number(e.target.value))} /></div>
                                      <div className="w-full sm:w-24"><InputField label="Hours/Day" type="number" value={app.hours} onChange={e => handleApplianceChange(app.id, 'hours', Number(e.target.value))} /></div>
@@ -338,131 +415,158 @@ const CalculatorPage = ({ project, updateProject, goBack }) => {
                         </div>) : (<div className="max-w-md mx-auto"><InputField label="Average Daily Energy Use" type="number" value={projectData.dailyEnergyKwh} onChange={e => handleInputChange('dailyEnergyKwh', e.target.value)} unit="kWh" tooltip="Find this on your monthly electricity bill."/></div>)}
                     </div>
                 </StepCard>
-
-                {/* Step 3: Solar Panel Sizing */}
                 <StepCard isActive={currentStep === 3}>
                     <div className="bg-white dark:bg-gray-800/50 p-8 rounded-2xl shadow-lg">
                         <SectionHeader icon={<Sun size={28} />} title="Solar Panel Sizing" subtitle="Calculate the required solar array size." step={3} />
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <InputField label="Peak Sun Hours" type="number" value={projectData.peakSunHours} onChange={e => handleInputChange('peakSunHours', e.target.value)} unit="hours" tooltip="The average daily hours of intense sunlight for your location (e.g., Abuja is ~5)."/>
-                             <InputField label="System Efficiency" type="number" value={projectData.systemEfficiency} onChange={e => handleInputChange('systemEfficiency', e.target.value)} unit="%" tooltip="Accounts for energy loss in wires, inverter, etc. 80-85% is typical."/>
-                             <div>
-                                 <SelectField label="Panel Wattage" value={projectData.panelWattage} onChange={e => handleInputChange('panelWattage', e.target.value)} options={[{ value: 300, label: '300W' }, { value: 400, label: '400W' }, { value: 450, label: '450W' }, { value: 550, label: '550W' }, { value: 'custom', label: 'Custom...' }]} tooltip="The power rating of a single solar panel."/>
-                                 {projectData.panelWattage === 'custom' && (<div className="mt-2"><InputField label="Custom Wattage" type="number" value={projectData.customPanelWattage} onChange={e => handleInputChange('customPanelWattage', e.target.value)} unit="W" /></div>)}
-                             </div>
+                            <SelectField label="Peak Sun Hours" value={projectData.peakSunHours} onChange={e => handleInputChange('peakSunHours', e.target.value)} options={PSH_OPTIONS} tooltip="The average daily hours of intense sunlight for your location."/>
+                            <InputField label="System Efficiency" type="number" value={projectData.systemEfficiency} onChange={e => handleInputChange('systemEfficiency', e.target.value)} unit="%" tooltip="Accounts for energy loss in wires, inverter, etc. 80-85% is typical."/>
+                            {/* UPDATE: New UI for custom panel wattage input */}
+                            <div>
+                                <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Panel Wattage
+                                    <Tooltip text="The power rating of a single solar panel."><Info size={14} className="ml-1.5 text-gray-400 cursor-help" /></Tooltip>
+                                </label>
+                                {projectData.panelWattage !== 'custom' ? (
+                                    <SelectField
+                                        value={projectData.panelWattage} 
+                                        onChange={e => handleInputChange('panelWattage', e.target.value)} 
+                                        options={PANEL_WATTAGE_OPTIONS}
+                                    />
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <InputField 
+                                            type="number" 
+                                            value={projectData.customPanelWattage} 
+                                            onChange={e => handleInputChange('customPanelWattage', e.target.value)} 
+                                            unit="W"
+                                            placeholder="Enter wattage"
+                                            autoFocus
+                                        />
+                                        <Tooltip text="Select from list">
+                                            <button 
+                                                onClick={() => handleInputChange('panelWattage', PANEL_WATTAGE_OPTIONS[0].value)} 
+                                                className="p-3 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex-shrink-0"
+                                            >
+                                                <List size={18} className="text-gray-700 dark:text-gray-200" />
+                                            </button>
+                                        </Tooltip>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </StepCard>
-
-                {/* Step 4: Battery Sizing */}
                 <StepCard isActive={currentStep === 4}>
                     <div className="bg-white dark:bg-gray-800/50 p-8 rounded-2xl shadow-lg">
                         <SectionHeader icon={<BatteryCharging size={28} />} title="Battery Bank Sizing" subtitle="Determine the storage capacity and number of batteries needed." step={4} />
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label="Days of Autonomy" type="number" value={projectData.daysOfAutonomy} onChange={e => handleInputChange('daysOfAutonomy', e.target.value)} unit="days" tooltip="How many days the system should run on battery power without sun."/>
-                            <SelectField label="Battery Type (DoD)" value={projectData.batteryDoD} onChange={e => handleInputChange('batteryDoD', e.target.value)} options={[{ value: 0.9, label: 'Lithium-ion (90% DoD)' }, { value: 0.8, label: 'Tubular (80% DoD)' }, { value: 0.8, label: 'Lithium-ion (80% DoD)' }, { value: 0.5, label: 'Lead-Acid (50% DoD)' }]} tooltip="Depth of Discharge: The usable percentage of the battery."/>
-                            <SelectField label="System Voltage" value={projectData.batteryVoltage} onChange={e => handleInputChange('batteryVoltage', e.target.value)} options={[{ value: 12, label: '12V' }, { value: 24, label: '24V' }, { value: 48, label: '48V' }]} tooltip="Higher voltage is generally more efficient."/>
+                            <SelectField label="Battery Type (DoD)" value={projectData.batteryDoD} onChange={e => handleInputChange('batteryDoD', e.target.value)} options={BATTERY_DOD_OPTIONS} tooltip="Depth of Discharge: The usable percentage of the battery."/>
+                            <SelectField label="System Voltage" value={projectData.batteryVoltage} onChange={e => handleInputChange('batteryVoltage', e.target.value)} options={SYSTEM_VOLTAGE_OPTIONS} tooltip="Higher voltage is generally more efficient."/>
                         </div>
                         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Calculate Number of Batteries</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <InputField label="Available Battery Capacity" type="number" value={projectData.availableBatteryAh} onChange={e => handleInputChange('availableBatteryAh', e.target.value)} unit="Ah" tooltip="The Amp-hour rating of a single battery you plan to use."/>
-                                <SelectField label="Available Battery Voltage" value={projectData.availableBatteryVoltage} onChange={e => handleInputChange('availableBatteryVoltage', e.target.value)} options={[{ value: 2, label: '2V' }, { value: 6, label: '6V' }, { value: 12, label: '12V' }]} tooltip="The voltage of a single battery unit."/>
+                                <SelectField label="Available Battery Voltage" value={projectData.availableBatteryVoltage} onChange={e => handleInputChange('availableBatteryVoltage', e.target.value)} options={AVAILABLE_BATTERY_VOLTAGE_OPTIONS} tooltip="The voltage of a single battery unit."/>
                             </div>
                             {projectData.batteryVoltage > 0 && projectData.availableBatteryVoltage > 0 && projectData.batteryVoltage % projectData.availableBatteryVoltage !== 0 && (<p className="text-red-600 text-sm mt-2">Warning: System Voltage is not a multiple of the voltage of a single battery.</p>)}
                         </div>
                     </div>
                 </StepCard>
-
-                {/* Step 5: Inverter/Controller Sizing */}
                 <StepCard isActive={currentStep === 5}>
                      <div className="bg-white dark:bg-gray-800/50 p-8 rounded-2xl shadow-lg">
-                        <SectionHeader icon={<PowerOff size={28} />} title="Inverter & Controller Sizing" subtitle="Size the core components that manage your power." step={5} />
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                             <div className="space-y-6">
-                                <InputField label="Peak Load" type="number" value={projectData.peakLoad} onChange={e => handleInputChange('peakLoad', e.target.value)} unit="W" tooltip="The maximum total wattage of all appliances you might run at the same time."/>
-                                <div className="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg text-center">
-                                    <p className="text-gray-600 dark:text-gray-300">Required Controller Size</p>
-                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">{calculations.chargeControllerAmps.toLocaleString()} <span className="text-xl">Amps</span></p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Based on solar array output and battery voltage, with a 25% safety factor.</p>
-                                </div>
-                            </div>
-                            <div className="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg">
-                                 <h4 className="font-semibold text-gray-700 dark:text-gray-200">Inverter Suggestions</h4>
-                                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Based on a 25% safety margin ({calculations.inverterSize.toLocaleString()}W required):</p>
-                                 {suggestedInverters.length > 0 ? (
-                                     <ul className="space-y-1">
-                                         {suggestedInverters.map((size, index) => (
-                                             <li key={size} className={`flex items-center space-x-2 p-2 rounded-md ${index === 0 ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>
-                                                 {index === 0 && <Info size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
-                                                 <span className={`text-gray-800 dark:text-gray-200 ${index === 0 ? 'font-bold' : ''}`}>{size.toLocaleString()}W</span>
-                                                 {index === 0 && <span className="text-xs text-white bg-blue-500 font-bold px-2 py-0.5 rounded-full">Recommended</span>}
-                                             </li>
-                                         ))}
-                                     </ul>
-                                 ) : (<p className="text-gray-600 dark:text-gray-300">No standard inverters match. Check Peak Load.</p>)}
-                             </div>
+                         <SectionHeader icon={<PowerOff size={28} />} title="Inverter & Controller Sizing" subtitle="Size the core components that manage your power." step={5} />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                              <div className="space-y-6">
+                                  <InputField label="Peak Load" type="number" value={projectData.peakLoad} onChange={e => handleInputChange('peakLoad', e.target.value)} unit="W" tooltip="The maximum total wattage of all appliances you might run at the same time."/>
+                                  <div className="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg text-center">
+                                      <p className="text-gray-600 dark:text-gray-300">Required Controller Size</p>
+                                      <p className="text-3xl font-bold text-gray-800 dark:text-white">{calculations.chargeControllerAmps.toLocaleString()} <span className="text-xl">Amps</span></p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Based on solar array output and battery voltage, with a 25% safety factor.</p>
+                                  </div>
+                              </div>
+                              <div className="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg">
+                                  <h4 className="font-semibold text-gray-700 dark:text-gray-200">Inverter Suggestions</h4>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Based on a 25% safety margin ({calculations.inverterSize.toLocaleString()}W required):</p>
+                                  {suggestedInverters.length > 0 ? (
+                                      <ul className="space-y-1">
+                                          {suggestedInverters.map((size, index) => (
+                                              <li key={size} className={`flex items-center space-x-2 p-2 rounded-md ${index === 0 ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>
+                                                  {index === 0 && <Info size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
+                                                  <span className={`text-gray-800 dark:text-gray-200 ${index === 0 ? 'font-bold' : ''}`}>{size.toLocaleString()}W</span>
+                                                  {index === 0 && <span className="text-xs text-white bg-blue-500 font-bold px-2 py-0.5 rounded-full">Recommended</span>}
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  ) : (<p className="text-gray-600 dark:text-gray-300">No standard inverters match. Check Peak Load.</p>)}
+                              </div>
                           </div>
                      </div>
                 </StepCard>
-
-                {/* Step 6: Summary */}
                 <StepCard isActive={currentStep === 6}>
                      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-8 rounded-2xl shadow-2xl print-area">
-                        <div className="hidden print:block print-only mb-6 border-b border-white/30 pb-4">
-                            <h3 className="text-2xl font-bold">Project Report: {projectData.projectName}</h3>
-                            <p className="text-lg text-blue-200">Prepared for: {projectData.clientName}</p>
-                            <p className="text-sm text-blue-300">Date: {new Date().toLocaleDateString()}</p>
-                        </div>
-                        <h2 className="text-3xl font-bold text-center mb-6">System Requirement Summary</h2>
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <ResultCard label="Solar Array Size" value={calculations.actualSystemSizeKw} unit="kW" large className="md:col-span-2 lg:col-span-1 lg:row-span-2 h-full flex flex-col justify-center" />
-                            <ResultCard label="Panels" value={calculations.numberOfPanels} unit={`x ${calculations.effectivePanelWattage}W`} />
-                            <ResultCard label="Inverter Size" value={calculations.inverterSize.toLocaleString()} unit="W" />
-                            <ResultCard label="Total Battery Capacity" value={(calculations.requiredBatteryCapacityWh / 1000).toFixed(2)} unit="kWh" />
-                            <ResultCard label="Batteries Needed" value={calculations.totalNumberOfBatteries} unit={`x ${projectData.availableBatteryAh}Ah ${projectData.availableBatteryVoltage}V`} />
-                            <ResultCard label="Charge Controller" value={calculations.chargeControllerAmps.toLocaleString()} unit="A" />
-                        </div>
-                    </div>
-                    <button onClick={() => window.print()} className="mt-6 w-full flex items-center justify-center gap-2 bg-gray-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-800 transition duration-300 shadow-lg print-hidden">
-                        <Printer size={20} />
-                        <span>Print Summary</span>
-                    </button>
+                         <div className="hidden print:block print-only mb-6 border-b border-white/30 pb-4">
+                             <h3 className="text-2xl font-bold">Project Report: {projectData.projectName}</h3>
+                             <p className="text-lg text-blue-200">Prepared for: {projectData.clientName}</p>
+                             <p className="text-sm text-blue-300">Date: {new Date().toLocaleDateString()}</p>
+                         </div>
+                         <h2 className="text-3xl font-bold text-center mb-6">System Requirement Summary</h2>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                             <ResultCard label="Solar Array Size" value={calculations.actualSystemSizeKw} unit="kW" large className="md:col-span-2 lg:col-span-1 lg:row-span-2 h-full flex flex-col justify-center" />
+                             <ResultCard label="Panels" value={calculations.numberOfPanels} unit={`x ${calculations.effectivePanelWattage}W`} />
+                             <ResultCard label="Inverter Size" value={calculations.inverterSize.toLocaleString()} unit="W" />
+                             <ResultCard label="Total Battery Capacity (Wh)" value={calculations.requiredBatteryCapacityWh} unit="Wh" />
+                             <ResultCard label="Batteries Needed" value={calculations.totalNumberOfBatteries} unit={`x ${projectData.availableBatteryAh}Ah ${projectData.availableBatteryVoltage}V`} />
+                             <ResultCard label="Charge Controller" value={calculations.chargeControllerAmps.toLocaleString()} unit="A" />
+                         </div>
+                     </div>
+                     <button onClick={() => window.print()} className="mt-6 w-full flex items-center justify-center gap-2 bg-gray-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-800 transition duration-300 shadow-lg print-hidden">
+                         <Printer size={20} />
+                         <span>Print Summary</span>
+                     </button>
                 </StepCard>
             </div>
 
-            {/* --- Navigation --- */}
             <div className="mt-8 flex justify-between items-center print-hidden">
-                <button 
-                    onClick={handleBack} 
-                    className={`flex items-center space-x-2 px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold transition-all duration-300 ${currentStep > 1 ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600' : 'opacity-0 cursor-not-allowed'}`}
-                    disabled={currentStep <= 1}
-                >
-                    <ArrowLeft size={20} />
-                    <span className="hidden md:inline">Back</span>
-                </button>
-                 <button 
-                    onClick={goBack}
-                    className="flex items-center space-x-2 px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold border-2 border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-300"
-                >
-                    <Home size={20} className="md:hidden" />
-                    <span className="hidden md:inline">Back to All Projects</span>
-                </button>
-                <button 
-                    onClick={handleNext} 
-                    className={`flex items-center space-x-2 px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold text-white transition-all duration-300 ${currentStep < TOTAL_STEPS ? 'bg-blue-600 hover:bg-blue-700 shadow-lg' : 'opacity-0 cursor-not-allowed'} ${!isStepValid ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed' : ''}`}
-                    disabled={!isStepValid || currentStep >= TOTAL_STEPS}
-                >
-                    <span className="hidden md:inline">Next</span>
-                    <ArrowRight size={20} />
-                </button>
+                <Tooltip text="Back">
+                    <button
+                        onClick={handleBack}
+                        className={`p-3 rounded-full font-semibold transition-all duration-300 ${currentStep > 1 ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600' : 'opacity-0 invisible'}`}
+                        disabled={currentStep <= 1}
+                    >
+                        <ArrowLeft size={24} className="text-gray-700 dark:text-gray-200" />
+                    </button>
+                </Tooltip>
+                
+                <Tooltip text="Back to All Projects">
+                    <button
+                        onClick={goBack}
+                        className="p-3 rounded-full font-semibold bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300"
+                    >
+                        <Home size={24} className="text-blue-600 dark:text-blue-400" />
+                    </button>
+                </Tooltip>
+
+                <Tooltip text={isNew && !isStepValid ? validationMessage : "Next"}>
+                    <div> {/* Wrapper div is necessary for tooltip on a disabled button */}
+                        <button
+                            onClick={handleNext}
+                            className={`p-3 rounded-full font-semibold text-white transition-all duration-300 ${currentStep < TOTAL_STEPS ? 'bg-blue-600 hover:bg-blue-700 shadow-lg' : 'opacity-0 invisible'} ${(isNew && !isStepValid) ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed' : ''}`}
+                            disabled={(isNew && !isStepValid) || currentStep >= TOTAL_STEPS}
+                        >
+                            <ArrowRight size={24} />
+                        </button>
+                    </div>
+                </Tooltip>
             </div>
         </div>
     );
 };
 
 
-// --- Main App Component (Using localStorage) ---
+// --- Main App Component ---
 export default function App() {
     const [projects, setProjects] = useState([]);
     const [activeProjectId, setActiveProjectId] = useState(null);
@@ -472,6 +576,7 @@ export default function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [projectToDelete, setProjectToDelete] = useState(null);
     const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+    const [isNewProject, setIsNewProject] = useState(false);
 
     // Load projects and theme from local storage on initial mount
     useEffect(() => {
@@ -509,13 +614,13 @@ export default function App() {
 
     const saveProjectsToStorage = useCallback((projectsToSave) => {
          try {
-            localStorage.setItem('solarProjects', JSON.stringify(projectsToSave));
-            setShowSaveConfirm(true);
-            const timer = setTimeout(() => setShowSaveConfirm(false), 2000); // Hide after 2 seconds
-            return () => clearTimeout(timer); // Cleanup timer on unmount or re-run
-        } catch (error) {
-            console.error("Could not save projects to local storage", error);
-        }
+             localStorage.setItem('solarProjects', JSON.stringify(projectsToSave));
+             setShowSaveConfirm(true);
+             const timer = setTimeout(() => setShowSaveConfirm(false), 2000);
+             return () => clearTimeout(timer);
+         } catch (error) {
+             console.error("Could not save projects to local storage", error);
+         }
     }, []);
 
     const createNewProject = () => {
@@ -526,7 +631,7 @@ export default function App() {
             dailyEnergyKwh: 10,
             appliances: [],
             calcMethod: 'audit',
-            peakSunHours: 5,
+            peakSunHours: 5.5,
             systemEfficiency: 80, 
             panelWattage: 450,
             customPanelWattage: 500,
@@ -542,20 +647,21 @@ export default function App() {
         setProjects(updatedProjects);
         saveProjectsToStorage(updatedProjects);
         setActiveProjectId(newProject.id);
+        setIsNewProject(true);
     };
     
-    // Switched to functional update for setProjects to remove `projects` from the dependency array,
-    // which breaks the infinite render loop.
     const updateProject = useCallback((updatedProjectData) => {
         setProjects(currentProjects => {
             const newProjects = currentProjects.map(p =>
                 p.id === updatedProjectData.id ? { ...updatedProjectData, lastUpdated: new Date().toISOString() } : p
             );
-            // We only save to storage, no need to show the popup on every keystroke.
             localStorage.setItem('solarProjects', JSON.stringify(newProjects));
             return newProjects;
         });
-    }, []);
+        if (isNewProject) {
+            setIsNewProject(false);
+        }
+    }, [isNewProject]);
     
     const handleDeleteRequest = (projectId) => {
         setProjectToDelete(projectId);
@@ -588,6 +694,16 @@ export default function App() {
         setEditingProjectId(null);
     };
     
+    const openProject = (projectId) => {
+        setActiveProjectId(projectId);
+        setIsNewProject(false);
+    };
+    
+    const goBackToProjects = () => {
+        setActiveProjectId(null);
+        setIsNewProject(false);
+    }
+
     const svgBodyBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><g fill="%239ca3af" fill-opacity="0.07"><circle cx="20" cy="20" r="1.5"/></g></svg>`;
     const darkSvgBodyBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><g fill="%234b5563" fill-opacity="0.1"><circle cx="20" cy="20" r="1.5"/></g></svg>`;
 
@@ -597,7 +713,12 @@ export default function App() {
         <div className="bg-gray-100 dark:bg-gray-900 min-h-screen" style={{backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(darkMode ? darkSvgBodyBackground : svgBodyBackground)}")`}}>
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
                  {activeProject ? (
-                    <CalculatorPage project={activeProject} updateProject={updateProject} goBack={() => setActiveProjectId(null)} />
+                    <CalculatorPage 
+                        project={activeProject} 
+                        updateProject={updateProject} 
+                        goBack={goBackToProjects}
+                        isNew={isNewProject}
+                    />
                 ) : (
                     <div>
                         <header className="text-center mb-10 pt-8 sm:pt-12 flex justify-between items-start">
@@ -640,13 +761,12 @@ export default function App() {
                                                             onKeyDown={(e) => { if (e.key === 'Enter') saveProjectName(project.id) }}
                                                         />
                                                     ) : (
-                                                      <div className="cursor-pointer" onClick={() => setActiveProjectId(project.id)}>
-                                                        <span className="font-semibold text-lg text-gray-800 dark:text-gray-200">{project.projectName}</span>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">Last updated: {new Date(project.lastUpdated).toLocaleString()}</p>
-                                                      </div>
+                                                        <div className="cursor-pointer" onClick={() => openProject(project.id)}>
+                                                            <span className="font-semibold text-lg text-gray-800 dark:text-gray-200">{project.projectName}</span>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400">Last updated: {new Date(project.lastUpdated).toLocaleString()}</p>
+                                                        </div>
                                                     )}
                                                 </div>
-
                                                 <div className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto justify-end">
                                                     {editingProjectId === project.id ? (
                                                         <Tooltip text="Save"><button onClick={(e) => {e.stopPropagation(); saveProjectName(project.id)}} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><Save size={18} /></button></Tooltip>
@@ -654,7 +774,7 @@ export default function App() {
                                                         <Tooltip text="Edit Name"><button onClick={(e) => {e.stopPropagation(); startEditing(project)}} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"><Edit size={18} /></button></Tooltip>
                                                     )}
                                                     <Tooltip text="Delete"><button onClick={(e) => {e.stopPropagation(); handleDeleteRequest(project.id)}} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><Trash2 size={18} /></button></Tooltip>
-                                                    <button onClick={() => setActiveProjectId(project.id)} className="bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-600">Open</button>
+                                                    <button onClick={() => openProject(project.id)} className="bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-600">Open</button>
                                                 </div>
                                             </div>
                                         </div>
