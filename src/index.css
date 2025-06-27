@@ -3,3 +3,7 @@
 #root > div {
    overflow: hidden;
 }
+
+svg {
+   margin-inline-end: 0;
+}
