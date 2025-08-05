@@ -112,6 +112,11 @@ const CalculatorPage = ({ project, updateProject, goBack, isNew }) => {
         return () => clearTimeout(handler);
     }, [projectData, updateProject, project]);
 
+     // Scroll to top when step changes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentStep]);
+    
     const handleInputChange = (field, value) => {
         const fieldType = typeof project[field];
         let parsedValue = value;
@@ -429,7 +434,7 @@ const ProjectDashboard = ({ projects, createNewProject, openProject, deleteProje
                                 </div>
                             </div>
                         </div>
-                    )) : <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg"><Zap size={32} className="mx-auto text-gray-400 mb-4" /><h3 className="text-lg font-semibold text-gray-800">No Projects Found</h3><p className="text-gray-500">Get started by creating your first solar project.</p></div>}
+                    )) : <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg"><div className="flex justify-center mb-4"><Zap size={32} className="text-gray-400" /></div><h3 className="text-lg font-semibold text-gray-800">No Projects Found</h3><p className="text-gray-500">Get started by creating your first solar project.</p></div>}
                 </div>
             </div>
         </div>
