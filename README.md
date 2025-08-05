@@ -1,4 +1,4 @@
-# Solar Calculator PWA
+# Solisys
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
 A PWA built with React and Tailwind CSS to accurately design and calculate the requirements for off-grid solar power systems.

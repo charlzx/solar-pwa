@@ -400,7 +400,7 @@ const ProjectDashboard = ({ projects, createNewProject, openProject, deleteProje
     return (
         <div className="py-12">
             <header className="text-center mb-12">
-                <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900">Solar Projects</h1>
+                <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900">Solisys</h1>
                 <p className="text-lg text-gray-500 mt-2">Manage all your solar calculation projects in one place.</p>
             </header>
             <div className="max-w-3xl mx-auto">
