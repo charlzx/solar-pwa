@@ -4,6 +4,11 @@
    overflow: hidden;
 }
 
+*:focus,
+*:active {
+  outline: none;
+}
+
 svg {
    margin-inline-end: 0;
 }

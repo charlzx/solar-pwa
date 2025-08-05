@@ -1,132 +1,157 @@
-# React + Vite
+# Solisys
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A PWA built with React and Tailwind CSS to accurately design and calculate the requirements for off-grid solar power systems.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This tool streamlines the complex process of solar system sizing by guiding the user through a logical, step-by-step workflow. It replaces manual calculations and spreadsheets, allowing solar installers, technicians, and homeowners to quickly generate detailed system specifications, manage multiple projects, and produce professional, client-ready summaries.
 
-## Expanding the ESLint configuration
+The application is fully responsive, installable on any device, and works offline.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Key Features
 
+- **Professional Workflow**: A guided, six-step process that mirrors a professional design flow: Project Details -> Energy Consumption -> Inverter -> Batteries -> Panels -> Summary.
 
-<!-- Solar Project Calculator
+- **Dual Calculation Methods**:
+  - **Appliance Audit**: A detailed method to list all appliances with quantities, wattage, and daily usage hours to calculate total energy consumption.
+  - **From Utility Bill**: A quick estimation method using the average daily energy consumption (kWh) from an electricity bill.
 
-A responsive, all-in-one Progressive Web App (PWA) built with React and Tailwind CSS to accurately calculate the requirements for off-grid solar power systems.This tool allows users to manage multiple projects, providing detailed sizing for solar panels, batteries, inverters, and charge controllers.
+- **Comprehensive Sizing Calculations**:
+  - Total Solar Array Size (kW)
+  - Number of Solar Panels Needed
+  - Required Battery Bank Capacity (Wh and Ah)
+  - Total Number of Individual Batteries
+  - Recommended Inverter Size (kVA) with selectable options.
+  - Required Charge Controller Size (Amps), with an option for hybrid inverters.
 
-🚀 Key Features
+- **Full Project Management**:
+  - Create, save, and manage multiple projects.
+  - Data persists in the browser’s localStorage.
+  - Edit project names and update calculations at any time.
 
-Multi-Step Calculator:A guided, six-step process covering all necessary variables from initial project details to final summary.
+- **Intuitive & Responsive UI**:
+  - Clean, professional, high-contrast light theme.
+  - Fully responsive layout for desktop, tablet, and mobile.
+  - Interactive stepper for clear navigation.
 
-Dual Calculation Methods:
+- **Printable Summaries**: Generate clean, professional, and printable reports suitable for client presentations or personal records.
 
-Appliance Audit:List all appliances with quantities, wattage, and daily usage hours to calculate total energy consumption.
+- **PWA Ready**: Installable on any compatible device (iOS, Android, Windows, macOS) for an offline, native app-like experience.
 
-Utility Bill:Quick estimation using average daily energy consumption (kWh) from your electricity bill.
+## Tech Stack
 
-Comprehensive Sizing Calculations:
+- **Frontend**: React (with Hooks)
+- **Styling**: Tailwind CSS
+- **Build Tool**: Vite
+- **Icons**: Lucide React
 
-Total Solar Array Size (kW)
+## Getting Started
 
-Number of Solar Panels Needed
+Follow these steps to set up and run the project locally.
 
-Required Battery Bank Capacity (Wh and Ah)
+### Prerequisites
 
-Total Number of Individual Batteries
+- Node.js (v14 or later)
+- npm or yarn
 
-Recommended Inverter Size (+25% safety margin)
+### Installation
 
-Required Charge Controller Size (Amps)
+**Clone the repository:**
+```bash
+git clone https://github.com/charlzx/solar-calculator.git
+```
 
-Full Project Management:
+## Setup Instructions
 
-Create, save, and manage multiple projects.
-
-Data persists in the browser’s localStorage.
-
-Edit project names and update calculations anytime.
-
-Intuitive & Responsive UI:
-
-Clean, modern design with Tailwind CSS.
-
-Fully responsive on desktop, tablet, and mobile.
-
-Interactive progress bar for step navigation.
-
-Dark and Light Mode support.
-
-Printable Summaries:Generate clean, printable reports suitable for client presentations or personal records.
-
-PWA Ready:Installable on any compatible device (iOS, Android, Windows, macOS) with offline access and native app-like experience.
-
-🛠 Tech Stack
-
-Frontend: React (with Hooks)
-
-Styling: Tailwind CSS
-
-Icons: Lucide React
-
-📥 Getting Started
-
-Follow these steps to set up the project locally.
-
-Prerequisites
-
-Node.js (v14 or later)
-
-npm or yarn
-
-Installation
-
-# Clone the repository
-git clone https://github.com/your-username/solar-calculator.git
-
-# Navigate to the project directory
+### Navigate to the project directory:
+```bash
 cd solar-calculator
+```
 
-# Install dependencies
+## Install Dependencies
+
+```bash
 npm install
+```
 
-# Start the development server
-npm start
+## Start the Development Server
 
-Visit http://localhost:3000 to view the app in your browser.
+```bash
+npm run dev 
+```
+The application will be available at http://localhost:5173 or the next available port.
 
-📚 How to Use
+## How to Use
 
-Project Dashboard
+### 1. Project Dashboard
 
-Create New Project: Click the "Create New Project" button.
+This is your main hub for managing calculations.
 
-Open Existing Project: Click any project card to resume.
+- **Create New Project**: Click `+ Create New Project` to begin a new system.
+- **Open Existing Project**: Click any project card to resume work.
+- **Edit & Delete**: Hover over a project card to rename or delete it.
 
-Edit & Delete: Rename or permanently delete projects using the respective icons.
+---
 
-Calculator View
+### 2. The Calculation Workflow
 
-Navigate using the progress bar at the top or navigation buttons at the bottom.
+Follow each step in order. Complete all required fields to continue.
 
-Complete required fields to proceed to the next step.
+#### Step 1: Project Details
 
-Step Breakdown:
+- Enter a **Project Name**
+- Optionally enter a **Client Name**
 
-Project Details: Name your project and client.
+#### Step 2: Energy Consumption
 
-Energy Use:
+Choose one method:
 
-Appliance Audit: Add appliances and usage details.
+- **Appliance Audit** (recommended)
+- **From Utility Bill**
 
-Utility Bill: Input average daily energy (kWh).
+#### Step 3: Inverter Sizing
 
-Panel Sizing: Provide Peak Sun Hours, system efficiency, and solar panel wattage.
+- Enter **Peak Load (W)** — the max power your appliances will draw at once
+- If using Appliance Audit, this value is calculated automatically but can be edited
+- Select an **Inverter Size** based on the Peak Load
 
-Battery Sizing: Select days of autonomy, battery type (Depth of Discharge), system voltage, and individual battery ratings.
+#### Step 4: Battery Bank Sizing
 
-Component Sizing: Enter maximum peak load to calculate inverter and charge controller sizes.
+Enter:
 
-Summary: Review system requirements and print the final report if needed.
- -->
+- **Days of Autonomy**
+- **Battery Type / Depth of Discharge (DoD)**
+- **System Voltage (V)**
+- **Battery Capacity (Ah)**
+- **Battery Voltage (V)**
+
+#### Step 5: Panel Sizing & Charging
+
+Provide:
+
+- **Peak Sun Hours (PSH)** for your location
+- **System Efficiency**
+- **Panel Wattage (W)**
+- Indicate if you're using a **hybrid inverter** with a charge controller
+
+#### Step 6: Summary
+
+- Review the full report with all calculated values
+- The report is printable and professional
+
+---
+
+## Terminology & Key Concepts
+
+- **Peak Load (W)**: Max power demand at a single moment
+- **kVA (Kilovolt-Ampere)**: Unit for apparent power; used to size inverters
+- **System Voltage (V)**: Common options are 12V, 24V, or 48V
+- **Amp-hour (Ah)**: Battery storage capacity
+- **Depth of Discharge (DoD)**: Safe usable battery capacity as a percentage
+- **Days of Autonomy**: Number of days the system can run without sunlight
+- **Peak Sun Hours (PSH)**: Total hours of full-strength sunlight per day
+
+
+
+_____________________________
